@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.matching.platform.mapper.UserAgentMapper">
+
+    <select id="findByUserId" resultType="com.matching.platform.entity.UserAgent">
+        SELECT * FROM user_agent WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByAgentId" resultType="com.matching.platform.entity.UserAgent">
+        SELECT * FROM user_agent WHERE agent_id = #{agentId}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_agent (agent_id, user_id, personality, model_version)
+        VALUES (#{agentId}, #{userId}, #{personality}, #{modelVersion})
+    </insert>
+
+    <update id="updateModelVersion">
+        UPDATE user_agent SET model_version = #{modelVersion} WHERE agent_id = #{agentId}
+    </update>
+</mapper>

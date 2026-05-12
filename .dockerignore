@@ -1,0 +1,17 @@
+**/node_modules/
+**/target/
+**/dist/
+**/.pnpm-store/
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.git/
+**/.idea/
+**/.vscode/
+**/logs/
+**/*.log
+.env
+*.md
+.gitignore
+Dockerfile*
+docker-compose*

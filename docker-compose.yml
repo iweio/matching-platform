@@ -1,0 +1,137 @@
+services:
+  mysql:
+    image: mysql:8.0.36
+    container_name: matching-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-matching_db}
+      MYSQL_USER: ${MYSQL_USER:-matching_app}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-matching_app_pass}
+    ports:
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./BBBackend/src/main/resources/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+    networks:
+      - matching-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
+
+  backend:
+    build:
+      context: ./BBBackend
+      dockerfile: Dockerfile
+    container_name: matching-backend
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-matching_db}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-matching_app}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-matching_app_pass}
+      MATCHING_INTERNAL_TOKEN: ${MATCHING_INTERNAL_TOKEN:-}
+      AGENT_SERVICE_URL: http://agent-service:8001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - matching-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
+
+  agent-service:
+    build:
+      context: ./BBBackend/AI设计大赛/agent_service
+      dockerfile: Dockerfile
+    container_name: matching-agent
+    ports:
+      - "${AGENT_PORT:-8001}:8001"
+    environment:
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - matching-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
+
+  frontend:
+    build:
+      context: ./Untitled
+      dockerfile: Dockerfile
+    container_name: matching-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      backend:
+        condition: service_healthy
+      agent-service:
+        condition: service_healthy
+    networks:
+      - matching-net
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: 3
+
+networks:
+  matching-net:
+    driver: bridge
+
+volumes:
+  mysql-data:

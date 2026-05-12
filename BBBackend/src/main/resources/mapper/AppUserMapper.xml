@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.matching.platform.mapper.AppUserMapper">
+
+    <select id="findByUserId" resultType="com.matching.platform.entity.AppUser">
+        SELECT * FROM app_user WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByPhone" resultType="com.matching.platform.entity.AppUser">
+        SELECT * FROM app_user WHERE phone = #{phone}
+    </select>
+
+    <!-- 仅写入需求文档核心字段；扩展列（avatar 等）由 DBA 执行 schema.sql / ALTER 后再按需加回 INSERT -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO app_user (user_id, phone, nick, gender, age, password_hash, bottom_line)
+        VALUES (#{userId}, #{phone}, #{nick}, #{gender}, #{age}, #{passwordHash}, #{bottomLine})
+    </insert>
+
+    <select id="findPartnerCandidate" resultType="com.matching.platform.entity.AppUser">
+        SELECT u.*
+        FROM app_user u
+        INNER JOIN user_distill d ON d.user_id = u.user_id AND d.distill_status = 1
+        INNER JOIN user_agent a ON a.user_id = u.user_id
+        WHERE u.user_id != #{selfUserId}
+          AND (#{selfGender} IS NULL OR u.gender IS NULL OR u.gender != #{selfGender})
+          AND NOT EXISTS (
+            SELECT 1 FROM match_record mr
+            WHERE (mr.user_a = u.user_id OR mr.user_b = u.user_id)
+              AND mr.status IN (0, 1, 2, 3)
+          )
+        ORDER BY RAND()
+        LIMIT 1
+    </select>
+
+    <select id="countMatchesForUser" resultType="long">
+        SELECT COUNT(1) FROM match_record
+        WHERE user_a = #{userId} OR user_b = #{userId}
+    </select>
+
+    <select id="countUnlocksForUser" resultType="long">
+        SELECT COUNT(1) FROM match_record
+        WHERE (user_a = #{userId} OR user_b = #{userId})
+          AND unlock_flag = 1
+    </select>
+</mapper>

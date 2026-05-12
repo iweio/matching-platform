@@ -1,0 +1,51 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Java
+*.java text eol=lf
+*.xml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.properties text eol=lf
+
+# Web
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+
+# Python
+*.py text eol=lf
+
+# Shell (must be LF for execution)
+*.sh text eol=lf
+
+# PowerShell (Windows native)
+*.ps1 text eol=crlf
+*.psm1 text eol=crlf
+
+# Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# SQL
+*.sql text eol=lf
+
+# Docker
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.jar binary
+*.zip binary
+*.tar binary
+*.gz binary

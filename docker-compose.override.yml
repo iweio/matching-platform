@@ -1,0 +1,26 @@
+services:
+  mysql:
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data-dev:/var/lib/mysql
+
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      LOGGING_LEVEL_COM_MATCHING: DEBUG
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  agent-service:
+    environment:
+      LOG_LEVEL: DEBUG
+
+  frontend:
+    ports:
+      - "3000:80"
+
+volumes:
+  mysql-data-dev:

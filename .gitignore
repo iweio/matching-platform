@@ -1,0 +1,60 @@
+# === OS generated files ===
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# === IDE ===
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.iml
+
+# === Environment & Secrets ===
+.env
+*.pem
+*.key
+credentials.json
+
+# === Dependencies ===
+node_modules/
+.pnpm-store/
+
+# === Build artifacts ===
+target/
+dist/
+build/
+out/
+*.class
+*.jar
+*.war
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+venv/
+.venv/
+*.egg
+
+# === Logs ===
+logs/
+*.log
+
+# === Docker ===
+mysql-data/
+
+# === Test output ===
+*.tmp
+*.temp

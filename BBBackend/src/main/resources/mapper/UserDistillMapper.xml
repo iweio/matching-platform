@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.matching.platform.mapper.UserDistillMapper">
+
+    <select id="findByUserId" resultType="com.matching.platform.entity.UserDistill">
+        SELECT * FROM user_distill WHERE user_id = #{userId}
+    </select>
+
+    <insert id="upsert">
+        INSERT INTO user_distill (user_id, speak_style, character_label, love_style, values_view, taboo, distill_status, process_status, model_version)
+        VALUES (#{userId}, #{speakStyle}, #{characterLabel}, #{loveStyle}, #{valuesView}, #{taboo}, #{distillStatus}, #{processStatus}, #{modelVersion})
+        ON DUPLICATE KEY UPDATE
+            speak_style = VALUES(speak_style),
+            character_label = VALUES(character_label),
+            love_style = VALUES(love_style),
+            values_view = VALUES(values_view),
+            taboo = VALUES(taboo),
+            distill_status = VALUES(distill_status),
+            process_status = VALUES(process_status),
+            model_version = VALUES(model_version)
+    </insert>
+
+    <update id="updateModelState">
+        UPDATE user_distill
+        SET distill_status = #{distillStatus},
+            model_version = #{modelVersion},
+            process_status = #{processStatus}
+        WHERE user_id = #{userId}
+    </update>
+</mapper>

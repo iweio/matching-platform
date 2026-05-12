@@ -1,0 +1,28 @@
+package com.matching.platform.config;
+
+import java.time.Duration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.client.RestTemplate;
+
+@Configuration
+@EnableConfigurationProperties(MatchingProperties.class)
+public class DataConfig {
+
+    @Bean
+    public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
+        return new TransactionTemplate(transactionManager);
+    }
+
+    @Bean
+    public RestTemplate restTemplate(RestTemplateBuilder builder) {
+        return builder
+                .connectTimeout(Duration.ofSeconds(10))
+                .readTimeout(Duration.ofMinutes(5))
+                .build();
+    }
+}

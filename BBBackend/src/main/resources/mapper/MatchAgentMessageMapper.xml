@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.matching.platform.mapper.MatchAgentMessageMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO match_agent_message (message_id, match_id, speaker, content, created_at)
+        VALUES (#{messageId}, #{matchId}, #{speaker}, #{content}, #{createdAt})
+    </insert>
+
+    <update id="updateMessageId">
+        UPDATE match_agent_message SET message_id = #{messageId} WHERE id = #{id}
+    </update>
+
+    <select id="findAfterId" resultType="com.matching.platform.entity.MatchAgentMessage">
+        SELECT * FROM match_agent_message
+        WHERE match_id = #{matchId}
+          AND id &gt; #{afterId}
+        ORDER BY id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByMatchId" resultType="long">
+        SELECT COUNT(1) FROM match_agent_message WHERE match_id = #{matchId}
+    </select>
+</mapper>

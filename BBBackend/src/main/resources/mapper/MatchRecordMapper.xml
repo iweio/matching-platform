@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.matching.platform.mapper.MatchRecordMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO match_record (match_id, user_a, user_b, status, a_op, b_op, unlock_flag, session_id, chat_round)
+        VALUES (#{matchId}, #{userA}, #{userB}, #{status}, #{aOp}, #{bOp}, #{unlockFlag}, #{sessionId}, #{chatRound})
+    </insert>
+
+    <update id="update">
+        UPDATE match_record
+        SET status = #{status},
+            a_op = #{aOp},
+            b_op = #{bOp},
+            unlock_flag = #{unlockFlag},
+            session_id = #{sessionId},
+            chat_round = #{chatRound}
+        WHERE match_id = #{matchId}
+    </update>
+
+    <select id="findByMatchId" resultType="com.matching.platform.entity.MatchRecord">
+        SELECT * FROM match_record WHERE match_id = #{matchId}
+    </select>
+
+    <select id="findActiveForUser" resultType="com.matching.platform.entity.MatchRecord">
+        SELECT * FROM match_record
+        WHERE (user_a = #{userId} OR user_b = #{userId})
+          AND status IN (0, 1, 2, 3)
+    </select>
+
+    <select id="countActiveForUser" resultType="int">
+        SELECT COUNT(1) FROM match_record
+        WHERE (user_a = #{userId} OR user_b = #{userId})
+          AND status IN (0, 1, 2, 3)
+    </select>
+
+    <select id="findHistoryByUserId" resultType="java.util.HashMap">
+        SELECT
+            mr.match_id AS matchId,
+            IF(mr.user_a = #{userId}, mr.user_b, mr.user_a) AS partnerId,
+            pu.nick AS partnerNick,
+            mr.status,
+            mr.a_op AS aOp,
+            mr.b_op AS bOp,
+            mr.unlock_flag AS unlockFlag,
+            mr.chat_round AS chatRound,
+            mr.create_time AS createTime,
+            mr.update_time AS updateTime,
+            rpt.score,
+            rpt.advantage
+        FROM match_record mr
+        INNER JOIN app_user pu ON pu.user_id = IF(mr.user_a = #{userId}, mr.user_b, mr.user_a)
+        LEFT JOIN match_report rpt ON rpt.match_id = mr.match_id
+        WHERE (mr.user_a = #{userId} OR mr.user_b = #{userId})
+        ORDER BY mr.create_time DESC
+    </select>
+
+    <select id="findConversationsByUserId" resultType="java.util.HashMap">
+        SELECT
+            mr.match_id AS matchId,
+            IF(mr.user_a = #{userId}, mr.user_b, mr.user_a) AS partnerUserId,
+            pu.nick AS partnerNick,
+            pu.gender AS partnerGender,
+            mr.unlock_flag AS unlockFlag,
+            (SELECT h.content FROM human_chat_message h
+             WHERE h.match_id = mr.match_id
+             ORDER BY h.created_at DESC LIMIT 1) AS lastMessage,
+            (SELECT h.created_at FROM human_chat_message h
+             WHERE h.match_id = mr.match_id
+             ORDER BY h.created_at DESC LIMIT 1) AS lastTime
+        FROM match_record mr
+        INNER JOIN app_user pu ON pu.user_id = IF(mr.user_a = #{userId}, mr.user_b, mr.user_a)
+        WHERE (mr.user_a = #{userId} OR mr.user_b = #{userId})
+          AND mr.unlock_flag = 1
+        ORDER BY mr.update_time DESC
+    </select>
+</mapper>

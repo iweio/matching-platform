@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能体算法服务 - 知识点与实现详解</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d2991d;
+    --red: #f85149;
+    --purple: #a371f7;
+    --code-bg: #1c2128;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 40px 20px;
+  }
+  .container { max-width: 1000px; margin: 0 auto; }
+  h1 {
+    font-size: 2.2em;
+    text-align: center;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .subtitle { text-align: center; color: #8b949e; margin-bottom: 40px; font-size: 1.05em; }
+  h2 {
+    font-size: 1.5em;
+    color: var(--accent);
+    margin: 48px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    font-size: 1.15em;
+    color: var(--green);
+    margin: 24px 0 10px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .card h4 {
+    color: var(--orange);
+    font-size: 1em;
+    margin-bottom: 8px;
+  }
+  .tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .tag-lang { background: #1f3a5f; color: #58a6ff; }
+  .tag-pattern { background: #2d1f3d; color: #a371f7; }
+  .tag-concept { background: #1f3d2d; color: #3fb950; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 0.88em;
+    line-height: 1.55;
+    margin: 12px 0;
+  }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace; }
+  .inline-code {
+    background: var(--code-bg);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid var(--border);
+  }
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+    font-size: 0.9em;
+  }
+  .flow-box {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 14px;
+    white-space: nowrap;
+  }
+  .flow-arrow { color: var(--accent); font-weight: bold; }
+  .highlight { color: var(--orange); font-weight: 600; }
+  .note {
+    border-left: 3px solid var(--accent);
+    padding: 10px 16px;
+    margin: 12px 0;
+    background: rgba(88,166,255,0.06);
+    border-radius: 0 6px 6px 0;
+  }
+  .note-warn {
+    border-left-color: var(--orange);
+    background: rgba(210,153,29,0.06);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    text-align: left;
+  }
+  th { background: var(--code-bg); color: var(--accent); }
+  .toc { columns: 2; column-gap: 24px; margin: 16px 0; }
+  .toc a { color: var(--accent); text-decoration: none; display: block; padding: 3px 0; }
+  .toc a:hover { text-decoration: underline; }
+  .file-ref {
+    color: #8b949e;
+    font-size: 0.85em;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>双智能体婚恋相亲平台 — 智能体算法服务</h1>
+<p class="subtitle">知识点详解 &amp; 实现原理 &middot; 基于 FastAPI + LangGraph + DeepSeek</p>
+
+<!-- ============ 目录 ============ -->
+<h2>目录</h2>
+<div class="toc">
+  <a href="#s1">1. 项目架构总览</a>
+  <a href="#s2">2. FastAPI — Web 框架</a>
+  <a href="#s3">3. Pydantic — 数据校验与序列化</a>
+  <a href="#s4">4. LangGraph StateGraph — 状态图工作流</a>
+  <a href="#s5">5. TypedDict — 类型安全的状态字典</a>
+  <a href="#s6">6. LangChain ChatOpenAI — LLM 客户端</a>
+  <a href="#s7">7. 单例模式 — LLMClient</a>
+  <a href="#s8">8. 类级别内存存储 — AgentStore / ChatStore</a>
+  <a href="#s9">9. 条件边 — 图的分支逻辑</a>
+  <a href="#s10">10. System Prompt 工程</a>
+  <a href="#s11">11. 关键词风险检测</a>
+  <a href="#s12">12. 降级兜底模式</a>
+  <a href="#s13">13. 异步编程 async/await</a>
+  <a href="#s14">14. CORS 中间件</a>
+  <a href="#s15">15. Docker 容器化</a>
+  <a href="#s16">16. 完整数据流追踪</a>
+</div>
+
+<!-- ============ 1 ============ -->
+<h2 id="s1">1. 项目架构总览</h2>
+
+<div class="card">
+  <h4>文件结构</h4>
+  <pre>agent_service/
+├── main.py              ← FastAPI 入口，路由注册
+├── models.py            ← Pydantic 数据模型（请求/响应）
+├── llm_client.py        ← LLM 客户端（单例 + 降级兜底）
+├── store.py             ← 内存存储（AgentStore / ChatStore）
+├── graphs/
+│   ├── model_refresh.py ← 人格蒸馏工作流
+│   ├── chat_start.py    ← 双AI对话工作流
+│   ├── generate_report.py ← 适配报告生成工作流
+│   └── risk_detect.py   ← 风险检测工作流
+├── Dockerfile
+├── docker-compose.yml
+└── .env                 ← API Key 配置</pre>
+</div>
+
+<div class="card">
+  <h4>技术栈一览</h4>
+  <table>
+    <tr><th>层级</th><th>技术</th><th>作用</th></tr>
+    <tr><td>Web 框架</td><td>FastAPI + Uvicorn</td><td>提供 RESTful API，自动生成 OpenAPI 文档</td></tr>
+    <tr><td>数据校验</td><td>Pydantic v2</td><td>请求/响应模型定义，自动类型校验</td></tr>
+    <tr><td>工作流引擎</td><td>LangGraph StateGraph</td><td>定义多步骤 AI 工作流（图节点 + 条件边）</td></tr>
+    <tr><td>LLM 调用</td><td>LangChain ChatOpenAI</td><td>统一接口调用 DeepSeek / OpenAI</td></tr>
+    <tr><td>类型标注</td><td>TypedDict</td><td>为图状态提供类型安全</td></tr>
+    <tr><td>容器化</td><td>Docker + Compose</td><td>一键构建 &amp; 部署</td></tr>
+  </table>
+</div>
+
+<!-- ============ 2 ============ -->
+<h2 id="s2">2. FastAPI — Web 框架</h2>
+
+<div class="card">
+  <h4><span class="tag tag-lang">Python</span> <span class="tag tag-concept">Web框架</span> 知识点</h4>
+  <p>FastAPI 是一个现代、高性能的 Python Web 框架，核心特点：</p>
+  <ul>
+    <li><strong>异步支持</strong>：原生 <code class="inline-code">async/await</code>，高并发场景性能优异</li>
+    <li><strong>自动文档</strong>：基于 Pydantic 自动生成 Swagger UI 和 ReDoc</li>
+    <li><strong>类型安全</strong>：利用 Python 类型注解做请求校验和响应序列化</li>
+    <li><strong>依赖注入</strong>：通过 <code class="inline-code">Depends()</code> 实现中间件式依赖管理</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— main.py</span></h4>
+  <pre>from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI(
+    title="双智能体婚恋相亲平台 - 智能体算法服务",
+    version="1.0.0",
+)
+
+# 注册 CORS 中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 路由定义：路径操作装饰器 + 响应模型
+@app.post("/api/agent/algo/model-refresh", response_model=ApiResponse)
+async def model_refresh(req: ModelRefreshRequest):
+    result = await model_refresh_app.ainvoke({"request": req.model_dump()})
+    # ... 处理结果并返回
+
+# 全局异常处理器
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content=...)</pre>
+
+  <div class="note">
+    <strong>关键设计</strong>：每个路由函数接收 Pydantic 请求模型 → 调用 LangGraph 工作流 → 返回统一的 <code class="inline-code">ApiResponse</code> 格式。全局异常处理器兜底所有未捕获异常，返回 500 而非让服务崩溃。
+  </div>
+</div>
+
+<!-- ============ 3 ============ -->
+<h2 id="s3">3. Pydantic — 数据校验与序列化</h2>
+
+<div class="card">
+  <h4><span class="tag tag-lang">Python</span> <span class="tag tag-concept">数据校验</span> 知识点</h4>
+  <p>Pydantic 是 Python 最流行的数据校验库，核心机制：</p>
+  <ul>
+    <li><strong>BaseModel</strong>：定义数据结构的基类，自动校验类型</li>
+    <li><strong>Field()</strong>：为字段添加描述、默认值、校验规则</li>
+    <li><strong>model_dump()</strong>：将模型实例转为字典（v2 替代旧的 <code class="inline-code">.dict()</code>）</li>
+    <li><strong>嵌套模型</strong>：一个模型可以包含另一个模型，形成树状结构</li>
+    <li><strong>自动错误响应</strong>：校验失败时 FastAPI 自动返回 422 + 详细错误信息</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— models.py</span></h4>
+  <pre>from pydantic import BaseModel, Field
+
+# 嵌套模型：三观数据
+class ValuesView(BaseModel):
+    marriage_view: str = Field(description="婚姻观")
+    money_view: str = Field(description="消费观")
+    family_view: str = Field(description="家庭观")
+
+# 嵌套模型：雷点底线
+class Taboo(BaseModel):
+    hate_behavior: list[str] = Field(default_factory=list, description="不能接受的行为")
+    hate_habit: list[str] = Field(default_factory=list, description="不能接受的习惯")
+
+# 请求模型：人格蒸馏
+class ModelRefreshRequest(BaseModel):
+    user_id: str = Field(description="用户ID")
+    agent_id: str = Field(description="智能体ID")
+    speak_style: str = Field(description="说话风格")
+    character: str = Field(description="性格类型")
+    love_style: str = Field(description="恋爱模式")
+    values_view: ValuesView = Field(description="三观数据")   # ← 嵌套模型
+    taboo: Taboo = Field(description="雷点底线")               # ← 嵌套模型
+
+# 统一响应格式
+class ApiResponse(BaseModel):
+    code: int = 200
+    msg: str = "success"
+    data: Optional[dict] = None</pre>
+
+  <div class="note">
+    <strong>设计要点</strong>：<code class="inline-code">ValuesView</code> 和 <code class="inline-code">Taboo</code> 作为嵌套模型被 <code class="inline-code">ModelRefreshRequest</code> 引用。当客户端发送请求时，FastAPI 自动递归校验所有嵌套字段。如果缺少必填字段，返回 422 状态码 + 精确的错误定位（哪个字段缺失）。
+  </div>
+</div>
+
+<!-- ============ 4 ============ -->
+<h2 id="s4">4. LangGraph StateGraph — 状态图工作流</h2>
+
+<div class="card">
+  <h4><span class="tag tag-lang">Python</span> <span class="tag tag-pattern">设计模式</span> <span class="tag tag-concept">AI框架</span> 知识点</h4>
+  <p>LangGraph 是 LangChain 生态中的工作流编排框架，核心概念：</p>
+  <ul>
+    <li><strong>StateGraph</strong>：以"状态字典"为中心的有向图，每个节点是一个函数，接收状态并返回更新后的状态</li>
+    <li><strong>节点 (Node)</strong>：图中的处理单元，是一个纯函数 <code class="inline-code">(state) → state</code></li>
+    <li><strong>边 (Edge)</strong>：连接节点的有向路径，分为普通边和条件边</li>
+    <li><strong>条件边 (Conditional Edge)</strong>：根据状态动态决定下一个节点</li>
+    <li><strong>编译 (compile)</strong>：将图定义编译为可执行的应用</li>
+    <li><strong>ainvoke</strong>：异步执行整个工作流</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 — 以 model_refresh.py 为例</h4>
+  <pre>from langgraph.graph import StateGraph, END
+
+def build_model_refresh_graph() -> StateGraph:
+    graph = StateGraph(ModelRefreshState)   # 1. 创建图，绑定状态类型
+
+    graph.add_node("validate_input", validate_input)       # 2. 添加节点
+    graph.add_node("build_system_prompt", build_system_prompt)
+    graph.add_node("save_profile", save_profile)
+    graph.add_node("handle_error", handle_error)
+
+    graph.set_entry_point("validate_input")                # 3. 设置入口
+
+    graph.add_conditional_edges(                           # 4. 条件边
+        "validate_input",
+        should_continue,                                   # 决策函数
+        {
+            "build_system_prompt": "build_system_prompt",  # 映射：返回值→目标节点
+            "handle_error": "handle_error",
+        },
+    )
+    graph.add_edge("build_system_prompt", "save_profile")  # 5. 普通边
+    graph.add_edge("save_profile", END)
+    graph.add_edge("handle_error", END)
+
+    return graph.compile()                                 # 6. 编译
+
+model_refresh_app = build_model_refresh_graph()            # 7. 导出应用</pre>
+
+  <div class="flow">
+    <span class="flow-box">validate_input</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--orange)">条件判断</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">build_system_prompt</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">save_profile</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--red)">END</span>
+  </div>
+  <div class="flow" style="margin-top:4px">
+    <span style="margin-left:120px">↘</span>
+    <span class="flow-box" style="border-color:var(--red); margin-left:8px">handle_error</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--red)">END</span>
+  </div>
+
+  <div class="note">
+    <strong>核心思想</strong>：每个节点函数只做一件事（单一职责），通过状态字典传递数据。条件边让工作流能根据校验结果走不同分支——校验通过走正常流程，失败走错误处理。这种模式比传统的 if-else 嵌套更清晰、更易测试。
+  </div>
+</div>
+
+<!-- ============ 5 ============ -->
+<h2 id="s5">5. TypedDict — 类型安全的状态字典</h2>
+
+<div class="card">
+  <h4><span class="tag tag-lang">Python</span> <span class="tag tag-concept">类型系统</span> 知识点</h4>
+  <p><code class="inline-code">TypedDict</code> 是 Python 3.8+ 引入的类型标注工具，用于给字典定义"结构模板"：</p>
+  <ul>
+    <li>不改变运行时行为（仍然是普通 dict）</li>
+    <li>为 IDE 和类型检查器（mypy/pyright）提供字段提示</li>
+    <li>在 LangGraph 中作为 StateGraph 的泛型参数，约束状态结构</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— 各 graph 文件</span></h4>
+  <pre>from typing import TypedDict
+
+class ModelRefreshState(TypedDict):
+    request: dict          # 原始请求数据
+    profile: dict          # 构建中的智能体档案
+    model_version: str     # 生成的版本号
+    status: str            # 当前状态: validated/success/failed
+    error: str             # 错误信息（空字符串表示无错误）</pre>
+
+  <div class="note">
+    <strong>为什么用 TypedDict 而不是 Pydantic？</strong><br>
+    LangGraph 内部通过字典合并来传递状态（后一个节点的输出合并到前一个状态中）。TypedDict 是纯字典，天然兼容这种合并机制；Pydantic 模型则需要额外的序列化/反序列化步骤。TypedDict 在这里是"轻量级结构约束"的最佳选择。
+  </div>
+</div>
+
+<!-- ============ 6 ============ -->
+<h2 id="s6">6. LangChain ChatOpenAI — LLM 客户端</h2>
+
+<div class="card">
+  <h4><span class="tag tag-lang">Python</span> <span class="tag tag-concept">AI框架</span> 知识点</h4>
+  <p><code class="inline-code">ChatOpenAI</code> 是 LangChain 提供的 LLM 调用封装，核心能力：</p>
+  <ul>
+    <li><strong>统一接口</strong>：通过 <code class="inline-code">base_url</code> 参数可以对接任何 OpenAI 兼容 API（DeepSeek、通义千问等）</li>
+    <li><strong>消息格式</strong>：使用 <code class="inline-code">SystemMessage</code> + <code class="inline-code">HumanMessage</code> 构建对话上下文</li>
+    <li><strong>参数控制</strong>：temperature（创造性）、max_tokens（长度限制）、request_timeout（超时）</li>
+    <li><strong>异步调用</strong>：<code class="inline-code">ainvoke()</code> 支持异步非阻塞调用</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— llm_client.py</span></h4>
+  <pre>from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage, HumanMessage
+
+# 初始化：优先 DeepSeek，回退 OpenAI
+cls._instance = ChatOpenAI(
+    api_key=deepseek_key,
+    base_url="https://api.deepseek.com/v1",   # ← 关键：指向 DeepSeek API
+    model="deepseek-chat",
+    temperature=0.8,                           # 较高温度 → 更有创造性的回复
+    max_tokens=1024,
+    request_timeout=15,                        # 15秒超时，防止无限等待
+)
+
+# 调用
+response = await cls._instance.ainvoke([
+    SystemMessage(content=system_prompt),      # 系统指令（人格设定）
+    HumanMessage(content=user_prompt),         # 用户指令（本轮对话要求）
+])
+return response.content.strip()</pre>
+
+  <div class="note">
+    <strong>为什么用 ChatOpenAI 而不是直接调 HTTP API？</strong><br>
+    LangChain 封装了重试、超时、流式输出等细节，且与 LangGraph 生态无缝集成。通过 <code class="inline-code">base_url</code> 切换 API 提供商只需改一行配置，不需要改业务代码。
+  </div>
+</div>
+
+<!-- ============ 7 ============ -->
+<h2 id="s7">7. 单例模式 — LLMClient</h2>
+
+<div class="card">
+  <h4><span class="tag tag-pattern">设计模式</span> 知识点</h4>
+  <p><strong>单例模式 (Singleton)</strong> 确保一个类只有一个实例，并提供全局访问点。适用于：数据库连接池、配置管理器、LLM 客户端等"创建成本高、需要全局共享"的对象。</p>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— llm_client.py</span></h4>
+  <pre>class LLMClient:
+    _instance: Optional[ChatOpenAI] = None   # 类变量，全局唯一
+    _available: bool = False
+    _provider: str = ""
+
+    @classmethod
+    def _init(cls) -> None:
+        if cls._instance is not None:        # ← 已初始化则跳过
+            return
+        # ... 创建 ChatOpenAI 实例
+        cls._instance = ChatOpenAI(...)
+
+    @classmethod
+    async def chat(cls, system_prompt, user_prompt) -> str:
+        cls._init()                          # 首次调用时初始化
+        # ... 使用 cls._instance 调用 LLM</pre>
+
+  <div class="note">
+    <strong>实现方式</strong>：使用 <strong>类变量 + 类方法</strong> 实现单例。所有方法都是 <code class="inline-code">@classmethod</code>，共享同一个 <code class="inline-code">cls._instance</code>。<br><br>
+    <strong>懒初始化 (Lazy Init)</strong>：不在类加载时创建实例，而是在第一次调用 <code class="inline-code">chat()</code> 时才初始化。这样即使服务启动时 API Key 暂时不可用，也不会崩溃。
+  </div>
+</div>
+
+<!-- ============ 8 ============ -->
+<h2 id="s8">8. 类级别内存存储 — AgentStore / ChatStore</h2>
+
+<div class="card">
+  <h4><span class="tag tag-pattern">设计模式</span> <span class="tag tag-concept">数据存储</span> 知识点</h4>
+  <p>使用类变量字典作为轻量级内存数据库，适合原型阶段或单机部署：</p>
+  <ul>
+    <li><strong>零依赖</strong>：不需要 Redis/MySQL 等外部服务</li>
+    <li><strong>极快读写</strong>：纯内存操作，微秒级延迟</li>
+    <li><strong>进程生命周期</strong>：服务重启后数据丢失（可接受的原型限制）</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— store.py</span></h4>
+  <pre>class AgentStore:
+    _profiles: dict[str, AgentProfile] = {}   # agent_id → AgentProfile
+
+    @classmethod
+    def save_profile(cls, profile: AgentProfile) -> None:
+        cls._profiles[profile.agent_id] = profile
+
+    @classmethod
+    def get_profile(cls, agent_id: str) -> Optional[AgentProfile]:
+        return cls._profiles.get(agent_id)
+
+    @classmethod
+    def exists(cls, agent_id: str) -> bool:
+        return agent_id in cls._profiles
+
+
+class ChatStore:
+    _sessions: dict[str, ChatSession] = {}    # session_id → ChatSession
+
+    @classmethod
+    def append_message(cls, session_id: str, message: ChatMessage) -> None:
+        session = cls._sessions.get(session_id)
+        if session:
+            session.messages.append(message)
+
+    @classmethod
+    def get_messages_since(cls, session_id: str, since_id: str) -> list[ChatMessage]:
+        """增量拉取：只返回 since_id 之后的消息"""
+        session = cls._sessions.get(session_id)
+        if not session:
+            return []
+        found = False
+        result = []
+        for msg in session.messages:
+            if found:
+                result.append(msg)
+            elif msg.id == since_id:
+                found = True
+        return result</pre>
+
+  <div class="note">
+    <strong>增量拉取 (get_messages_since)</strong> 是一个巧妙的设计：客户端轮询时只需传上次收到的最后一条消息 ID，服务端只返回新消息。避免了每次全量传输，减少带宽消耗。实现方式：遍历消息列表，找到 <code class="inline-code">since_id</code> 后开始收集。
+  </div>
+</div>
+
+<!-- ============ 9 ============ -->
+<h2 id="s9">9. 条件边 — 图的分支逻辑</h2>
+
+<div class="card">
+  <h4><span class="tag tag-concept">LangGraph</span> 知识点</h4>
+  <p>条件边是 LangGraph 的核心机制，让工作流能根据状态动态选择路径：</p>
+  <pre>graph.add_conditional_edges(
+    "source_node",        # 源节点
+    decision_function,    # 决策函数: (state) → str
+    {
+        "return_val_1": "target_node_1",   # 返回值 → 目标节点
+        "return_val_2": "target_node_2",
+    }
+)</pre>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 — chat_start.py 的循环对话</h4>
+  <pre>def should_continue_chat(state: ChatStartState) -> str:
+    if state.get("error"):
+        return "finalize_chat"                    # 有错误 → 结束
+    if state["current_round"] >= state["round_limit"]:
+        return "finalize_chat"                    # 达到轮数上限 → 结束
+    return "agent_speak"                          # 否则 → 继续对话
+
+# 注册条件边：agent_speak 执行完后判断是否继续
+graph.add_conditional_edges(
+    "agent_speak",
+    should_continue_chat,
+    {"agent_speak": "agent_speak", "finalize_chat": "finalize_chat"},
+)</pre>
+
+  <div class="flow">
+    <span class="flow-box">agent_speak</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--orange)">should_continue?</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">agent_speak</span>
+    <span class="flow-arrow">↻ 循环</span>
+  </div>
+  <div class="flow" style="margin-top:4px">
+    <span style="margin-left:200px">↘</span>
+    <span class="flow-box" style="border-color:var(--red); margin-left:8px">finalize_chat</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--red)">END</span>
+  </div>
+
+  <div class="note">
+    <strong>这就是"双AI对话"的核心循环机制</strong>：<code class="inline-code">agent_speak</code> 节点每次让当前发言方生成一句话，然后 <code class="inline-code">should_continue_chat</code> 检查是否达到轮数上限。没达到就回到 <code class="inline-code">agent_speak</code>（此时发言方已切换），形成 A→B→A→B... 的交替对话。
+  </div>
+</div>
+
+<!-- ============ 10 ============ -->
+<h2 id="s10">10. System Prompt 工程</h2>
+
+<div class="card">
+  <h4><span class="tag tag-concept">AI工程</span> 知识点</h4>
+  <p>System Prompt 是发送给 LLM 的"角色设定指令"，决定了 AI 的行为模式。好的 System Prompt 包含：</p>
+  <ul>
+    <li><strong>角色定义</strong>：你是谁，代表谁</li>
+    <li><strong>人格参数</strong>：说话风格、性格、恋爱模式</li>
+    <li><strong>价值观约束</strong>：三观、雷点底线</li>
+    <li><strong>行为规则</strong>：具体的行为指令（回复长度、话题引导等）</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— model_refresh.py</span></h4>
+  <pre>system_prompt = f"""你是一个婚恋智能体，代表用户 {user_id} 进行婚恋匹配对话。
+
+## 你的人格设定
+- 说话风格：{speak_style}
+- 性格类型：{character}
+- 恋爱模式：{love_style}
+
+## 你的三观
+- 婚姻观：{marriage_view}
+- 消费观：{money_view}
+- 家庭观：{family_view}
+
+## 你的雷点底线
+- 不能接受的行为：{hate_behavior}
+- 不能接受的习惯：{hate_habit}
+
+## 对话规则
+1. 用你的人格设定自然地与对方交流
+2. 逐步了解对方的三观、性格、生活习惯
+3. 遇到触及雷点的内容时，礼貌地表达不适
+4. 保持真诚，不伪装，不套路
+5. 每次回复控制在2-4句话，像真人聊天一样自然
+"""</pre>
+
+  <div class="note">
+    <strong>这就是"人格蒸馏"的核心</strong>：将用户填写的表单数据（说话风格、性格、三观、雷点）拼接成一段结构化的 System Prompt。之后每次对话，这个 Prompt 都会作为 SystemMessage 发送给 LLM，确保 AI 始终以该人格进行交流。
+  </div>
+</div>
+
+<!-- ============ 11 ============ -->
+<h2 id="s11">11. 关键词风险检测</h2>
+
+<div class="card">
+  <h4><span class="tag tag-concept">算法</span> 知识点</h4>
+  <p>基于规则的关键词匹配是一种经典的风控手段，优势是：<strong>快速、可解释、不依赖 LLM</strong>。本项目定义了 7 种风险模式：</p>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— risk_detect.py</span></h4>
+  <pre>RISK_PATTERNS = {
+    "敷衍": {
+        "keywords": ["嗯", "哦", "呵呵", "随便", "都行", "还行吧", "不知道"],
+        "short_threshold": 5,   # 短回复阈值（字数≤5）
+        "description": "回复过于简短敷衍，缺乏交流诚意",
+    },
+    "冷漠": {
+        "keywords": ["关我什么事", "无所谓", "不感兴趣", "别烦我"],
+    },
+    "情绪化": {
+        "keywords": ["烦死了", "气死我了", "滚", "无语", "受不了"],
+    },
+    "利己主义": {
+        "keywords": ["你必须", "你应该", "给我", "凭什么", "我不管"],
+    },
+    "套路化": {
+        "keywords": ["在吗", "发张照片", "你多高", "你收入多少", "有房吗", "有车吗"],
+    },
+    "不尊重": {
+        "keywords": ["你懂什么", "就你", "你这种人", "呵呵女人", "呵呵男人"],
+    },
+    "过度打探": {
+        "keywords": ["工资多少", "存款多少", "家里干什么的", "房子多大"],
+    },
+}</pre>
+
+  <pre>def _keyword_risk_detect(chat_record: list[dict]) -> dict:
+    detected_tags = []
+    risk_scores = []
+
+    for agent in ["agent_a", "agent_b"]:
+        agent_msgs = [m for m in chat_record if m.get("speaker") == agent]
+        agent_contents = [m.get("content", "") for m in agent_msgs]
+
+        for tag_name, pattern in RISK_PATTERNS.items():
+            keyword_hits = 0
+            short_count = 0
+
+            for content in agent_contents:
+                for kw in pattern["keywords"]:
+                    if kw in content:           # ← 子串匹配
+                        keyword_hits += 1
+                if len(content) <= pattern.get("short_threshold", 3):
+                    short_count += 1
+
+            total = len(agent_contents)
+            hit_rate = keyword_hits / max(total, 1)
+
+            # 命中率 ≥ 30% 或 短回复 ≥ 50%（仅针对"敷衍"标签）
+            if hit_rate >= 0.3 or (short_count >= total * 0.5 and tag_name == "敷衍"):
+                tag_label = f"{agent}({tag_name})"
+                detected_tags.append(tag_label)
+                risk_scores.append(min(100, int(hit_rate * 100 + 20)))</pre>
+
+  <div class="note">
+    <strong>检测策略</strong>：<br>
+    1. 按发言方分组，分别检测 A 和 B<br>
+    2. 对每种风险模式，统计关键词命中率<br>
+    3. 命中率 ≥ 30% 即标记为风险<br>
+    4. "敷衍"有额外规则：短回复占比 ≥ 50% 也触发<br>
+    5. 风险分 = 命中率 × 100 + 20（上限 100）<br><br>
+    <strong>双层检测</strong>：优先用 LLM 做语义级风险分析（更准确），LLM 不可用时降级到关键词匹配（更快、更可靠）。
+  </div>
+</div>
+
+<!-- ============ 12 ============ -->
+<h2 id="s12">12. 降级兜底模式 (Fallback)</h2>
+
+<div class="card">
+  <h4><span class="tag tag-pattern">设计模式</span> <span class="tag tag-concept">容错设计</span> 知识点</h4>
+  <p>降级兜底是分布式系统中保证可用性的关键策略：当外部依赖（LLM API）不可用时，使用本地逻辑提供"够用但不完美"的结果，而不是直接报错。</p>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— llm_client.py</span></h4>
+  <pre>@classmethod
+async def chat(cls, system_prompt: str, user_prompt: str) -> str:
+    cls._init()
+    if not cls._instance:                        # LLM 未初始化
+        return cls._simulate(system_prompt, user_prompt)  # → 降级
+    try:
+        response = await cls._instance.ainvoke([...])
+        content = response.content.strip() if response.content else ""
+        if content:
+            return content
+        return cls._simulate(system_prompt, user_prompt)  # 空响应 → 降级
+    except Exception:
+        return cls._simulate(system_prompt, user_prompt)  # 异常 → 降级</pre>
+
+  <pre>@classmethod
+def _simulate(cls, system_prompt: str, user_prompt: str) -> str:
+    """基于关键词的本地模拟回复"""
+    if "开场" in user_prompt or "第一次" in user_prompt:
+        return "你好呀！很高兴认识你～..."
+    if "兴趣爱好" in user_prompt:
+        return "我平时喜欢运动健身，周末会去爬山或者跑步..."
+    if "工作" in user_prompt or "生活状态" in user_prompt:
+        return "我目前在一家互联网公司工作..."
+    # ... 更多话题匹配
+    return "嗯，我觉得你说得很有道理..."</pre>
+
+  <div class="note note-warn">
+    <strong>降级的三个触发条件</strong>：<br>
+    1. <strong>LLM 未初始化</strong>：API Key 未配置或初始化失败<br>
+    2. <strong>LLM 返回空内容</strong>：API 返回了响应但 content 为空<br>
+    3. <strong>调用异常</strong>：网络超时、API 限流、服务端错误等<br><br>
+    <strong>_simulate 的实现思路</strong>：根据 user_prompt 中的关键词匹配预设回复模板。虽然回复不够智能，但保证了服务不会因为 LLM 不可用而完全中断。
+  </div>
+</div>
+
+<!-- ============ 13 ============ -->
+<h2 id="s13">13. 异步编程 async/await</h2>
+
+<div class="card">
+  <h4><span class="tag tag-lang">Python</span> <span class="tag tag-concept">并发</span> 知识点</h4>
+  <p>Python 的 <code class="inline-code">async/await</code> 是协程-based 的异步编程模型：</p>
+  <ul>
+    <li><strong>async def</strong>：定义一个协程函数，调用它返回一个协程对象</li>
+    <li><strong>await</strong>：暂停当前协程，等待另一个协程完成，期间不阻塞线程</li>
+    <li><strong>优势</strong>：在等待 I/O（网络请求、数据库查询）时，线程可以处理其他请求</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现</h4>
+  <pre># main.py — FastAPI 路由自动支持 async
+@app.post("/api/agent/algo/chat-start")
+async def chat_start(req: ChatStartRequest):          # async def
+    result = await chat_start_app.ainvoke(...)         # await LangGraph 工作流
+    return ApiResponse(...)
+
+# chat_start.py — 异步生成对话
+async def generate_opening(state: ChatStartState):
+    content = await _generate_message(...)             # await LLM 调用
+    ...
+
+# llm_client.py — 异步调用 LLM
+async def chat(cls, system_prompt, user_prompt):
+    response = await cls._instance.ainvoke([...])      # await HTTP 请求</pre>
+
+  <div class="note">
+    <strong>异步链路</strong>：HTTP 请求 → FastAPI async handler → LangGraph ainvoke → 各节点 async 函数 → LLMClient.chat → ChatOpenAI.ainvoke。整条链路都是异步的，线程不会在等待 LLM 响应时被阻塞。
+  </div>
+</div>
+
+<!-- ============ 14 ============ -->
+<h2 id="s14">14. CORS 中间件</h2>
+
+<div class="card">
+  <h4><span class="tag tag-concept">Web基础</span> 知识点</h4>
+  <p><strong>CORS (跨域资源共享)</strong> 是浏览器的安全机制：默认禁止网页从不同源（域名/端口/协议）请求数据。后端需要显式声明允许哪些源访问。</p>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现 <span class="file-ref">— main.py</span></h4>
+  <pre>app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],        # 允许所有来源（开发阶段）
+    allow_credentials=True,     # 允许携带 Cookie
+    allow_methods=["*"],        # 允许所有 HTTP 方法
+    allow_headers=["*"],        # 允许所有请求头
+)</pre>
+
+  <div class="note note-warn">
+    <strong>注意</strong>：<code class="inline-code">allow_origins=["*"]</code> 适合开发阶段，生产环境应改为具体的前端域名列表，如 <code class="inline-code">["https://myapp.com"]</code>。
+  </div>
+</div>
+
+<!-- ============ 15 ============ -->
+<h2 id="s15">15. Docker 容器化</h2>
+
+<div class="card">
+  <h4><span class="tag tag-concept">DevOps</span> 知识点</h4>
+  <p>Docker 将应用及其依赖打包成镜像，实现"一次构建，到处运行"：</p>
+  <ul>
+    <li><strong>Dockerfile</strong>：定义镜像构建步骤</li>
+    <li><strong>docker-compose.yml</strong>：定义多容器服务的编排</li>
+    <li><strong>.dockerignore</strong>：排除不需要打包的文件（类似 .gitignore）</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h4>在本项目中的实现</h4>
+  <pre># Dockerfile
+FROM python:3.11-slim              # 基础镜像（轻量版 Python 3.11）
+WORKDIR /app                        # 工作目录
+RUN apt-get update && apt-get install -y gcc  # 安装编译工具
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .                            # 复制应用代码
+EXPOSE 8001                         # 声明端口
+CMD ["python", "main.py"]          # 启动命令
+
+# docker-compose.yml
+services:
+  agent-service:
+    build: .                        # 从当前目录构建
+    ports:
+      - "8001:8001"                 # 宿主机:容器 端口映射
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}  # 从 .env 注入
+    restart: unless-stopped         # 异常退出自动重启</pre>
+
+  <div class="note">
+    <strong>启动流程</strong>：<code class="inline-code">docker compose up -d --build</code> → 构建镜像 → 创建容器 → 后台运行。服务运行在 <code class="inline-code">http://localhost:8001</code>。
+  </div>
+</div>
+
+<!-- ============ 16 ============ -->
+<h2 id="s16">16. 完整数据流追踪</h2>
+
+<div class="card">
+  <h4>以"用户发起一次婚恋匹配"为例，追踪完整数据流</h4>
+
+  <h3>Step 1: 人格蒸馏（创建两个智能体）</h3>
+  <div class="flow">
+    <span class="flow-box">POST /model-refresh</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">FastAPI 校验 Pydantic</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">model_refresh_app.ainvoke</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">validate_input</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">build_system_prompt</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">save_profile → AgentStore</span>
+  </div>
+
+  <h3>Step 2: 启动双AI对话</h3>
+  <div class="flow">
+    <span class="flow-box">POST /chat-start</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">validate_agents</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">init_session → ChatStore</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">generate_opening</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--orange)">LLMClient.chat</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">agent_speak × N轮</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">finalize_chat</span>
+  </div>
+
+  <h3>Step 3: 生成适配报告</h3>
+  <div class="flow">
+    <span class="flow-box">POST /generate-report</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">load_session ← ChatStore</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">analyze_conversation</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--orange)">LLMClient.chat_json</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">返回五维评分</span>
+  </div>
+
+  <h3>Step 4: 风险检测</h3>
+  <div class="flow">
+    <span class="flow-box">POST /risk-detect</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">validate_input</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">scan_risk_patterns</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box" style="border-color:var(--orange)">LLM 检测 / 关键词检测</span>
+    <span class="flow-arrow">→</span>
+    <span class="flow-box">返回风险标签+分数</span>
+  </div>
+</div>
+
+<div class="card" style="margin-top:32px; text-align:center; border-color:var(--accent)">
+  <p style="color:var(--accent); font-size:1.1em">
+    <strong>核心架构思想</strong>：<br>
+    FastAPI 做接入层 → Pydantic 做数据校验 → LangGraph 做流程编排 → LangChain 做 LLM 调用<br>
+    每一层职责清晰，替换任何一层都不影响其他层。
+  </p>
+</div>
+
+</div>
+</body>
+</html>
