@@ -13,6 +13,7 @@ import com.matching.platform.mapper.MatchRecordMapper;
 import com.matching.platform.util.TimeUtil;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -79,6 +80,7 @@ public class HumanChatApplicationService {
                     new HumanChatItem(
                             id, row.getSenderId(), row.getContent(), TimeUtil.format(row.getCreatedAt())));
         }
+        Collections.reverse(items);
         ChatListResponse resp = new ChatListResponse();
         resp.setMessages(items);
         resp.setPage(page);

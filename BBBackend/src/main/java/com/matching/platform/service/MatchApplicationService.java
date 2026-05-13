@@ -252,7 +252,15 @@ public class MatchApplicationService {
             } else {
                 m.setBOp("reject");
             }
+            // 记录拒绝关系（双向），之后无法再次匹配到
+            matchPoolService.recordRejection(req.getUserId(), 
+                    req.getUserId().equals(m.getUserA()) ? m.getUserB() : m.getUserA());
+            // 清理匹配池中的用户（防止用户重复匹配）
+            matchPoolService.leave(m.getUserA());
+            matchPoolService.leave(m.getUserB());
+            // 设置为拒绝状态
             m.setStatus(4);
+            m.setUnlockFlag(0);
             matchRecordMapper.update(m);
             return new UnlockResponse(0, false);
         }
@@ -265,6 +273,9 @@ public class MatchApplicationService {
             boolean both =
                     "agree".equalsIgnoreCase(m.getAOp()) && "agree".equalsIgnoreCase(m.getBOp());
             if (both) {
+                // 双方都同意，清理匹配池并设置解锁状态
+                matchPoolService.leave(m.getUserA());
+                matchPoolService.leave(m.getUserB());
                 m.setUnlockFlag(1);
                 m.setStatus(5);
             }
@@ -367,8 +378,12 @@ public class MatchApplicationService {
                     }
                 }
 
-                if (current.getStatus() >= 2) {
-                    emitter.send(SseEmitter.event().name("done").data("completed"));
+                if (current.getStatus() != null && current.getStatus() >= 2) {
+                    if (current.getStatus() == 4) {
+                        emitter.send(SseEmitter.event().name("done").data("rejected"));
+                    } else {
+                        emitter.send(SseEmitter.event().name("done").data("completed"));
+                    }
                     emitter.complete();
                     scheduler.shutdown();
                 }

@@ -1,14 +1,30 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { User, Heart, CheckCircle, TrendingUp, Settings, RefreshCw, LogOut } from "lucide-react";
+import { User, Heart, CheckCircle, TrendingUp, Settings, RefreshCw, LogOut, MessageCircle, ChevronRight, XCircle } from "lucide-react";
 import { api } from "../api";
 import { getUserId, clearSession } from "../storage";
+
+interface HistoryItem {
+  match_id: string;
+  partner_id: string;
+  partner_nick: string;
+  status: number;
+  a_op: string;
+  b_op: string;
+  unlock_flag: number;
+  chat_round: number;
+  create_time: string;
+  score: number;
+  advantage: string;
+}
 
 export function ProfilePage() {
   const navigate = useNavigate();
   const uid = getUserId();
   const [user, setUser] = useState<any>(null);
   const [loadError, setLoadError] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
     if (!uid) { navigate("/login", { replace: true }); return; }
@@ -20,6 +36,11 @@ export function ProfilePage() {
     api.getUser(uid)
       .then((u) => { if (!cancelled) { setUser(u); setLoadError(false); } })
       .catch(() => { if (!cancelled) setLoadError(true); });
+
+    api.getHistory(uid)
+      .then((h) => { if (!cancelled) setHistory(Array.isArray(h) ? h : []); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setHistoryLoading(false); });
 
     return () => {
       cancelled = true;
@@ -35,6 +56,17 @@ export function ProfilePage() {
   const handleReLogin = () => {
     clearSession();
     navigate("/login", { replace: true });
+  };
+
+  const matchCount = history.length;
+  const unlockCount = history.filter(h => h.unlock_flag === 1).length;
+  const successRate = matchCount > 0 ? Math.round((unlockCount / matchCount) * 100) : 0;
+
+  const statusLabels: Record<number, string> = { 0: "匹配中", 1: "聊天中", 2: "报告已生成", 3: "报告已生成", 4: "已拒绝", 5: "已解锁" };
+  const statusColors: Record<number, string> = {
+    0: "bg-yellow-100 text-yellow-700", 1: "bg-blue-100 text-blue-700",
+    2: "bg-purple-100 text-purple-700", 3: "bg-purple-100 text-purple-700",
+    4: "bg-red-100 text-red-700", 5: "bg-green-100 text-green-700",
   };
 
   if (loadError) return (
@@ -94,17 +126,17 @@ export function ProfilePage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-xl p-6 text-center">
               <Heart className="w-8 h-8 text-pink-600 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-pink-600 mb-1">-</div>
+              <div className="text-3xl font-bold text-pink-600 mb-1">{matchCount}</div>
               <div className="text-sm text-gray-600">匹配次数</div>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 text-center">
               <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-green-600 mb-1">-</div>
+              <div className="text-3xl font-bold text-green-600 mb-1">{unlockCount}</div>
               <div className="text-sm text-gray-600">解锁次数</div>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 text-center">
               <TrendingUp className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-              <div className="text-3xl font-bold text-purple-600 mb-1">-</div>
+              <div className="text-3xl font-bold text-purple-600 mb-1">{successRate}%</div>
               <div className="text-sm text-gray-600">成功率</div>
             </div>
           </div>
@@ -112,10 +144,54 @@ export function ProfilePage() {
 
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h3 className="text-xl font-bold text-gray-900 mb-6">匹配记录</h3>
-          <div className="text-center py-12 text-gray-500">
-            <Heart className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>暂无匹配记录</p>
-          </div>
+          {historyLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : history.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <Heart className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>暂无匹配记录</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {history.map((item) => (
+                <div key={item.match_id}
+                  className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={() => {
+                    sessionStorage.setItem("match_id", item.match_id);
+                    if (item.status === 2 || item.status === 3 || item.status === 5) {
+                      navigate("/report");
+                    } else if (item.unlock_flag === 1) {
+                      navigate(`/chat?match_id=${item.match_id}`);
+                    } else {
+                      navigate("/match");
+                    }
+                  }}
+                >
+                  <div className="w-10 h-10 bg-gradient-to-br from-pink-400 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 truncate">{item.partner_nick || `用户 ${item.partner_id?.slice(-6) || ""}`}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${statusColors[item.status] || "bg-gray-100 text-gray-600"}`}>
+                        {statusLabels[item.status] ?? "未知"}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      对话轮次 {item.chat_round} · 匹配于 {item.create_time?.slice(0, 10) || "-"}
+                      {item.score ? <> · 评分 {item.score}</> : null}
+                    </div>
+                    {item.advantage && (
+                      <p className="text-xs text-gray-400 mt-1 truncate">{item.advantage}</p>
+                    )}
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                </div>
+              ))}
+            </div>
+          )}
           <div className="mt-8 flex gap-4">
             <Link to="/match" className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 rounded-lg font-semibold text-center hover:shadow-lg transition-all">开始新匹配</Link>
             <Link to="/distill" className="flex-1 border-2 border-purple-600 text-purple-600 py-3 rounded-lg font-semibold text-center hover:bg-purple-50 transition-all">重新蒸馏</Link>

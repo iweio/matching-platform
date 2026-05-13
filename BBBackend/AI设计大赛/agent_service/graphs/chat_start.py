@@ -18,6 +18,8 @@ class ChatStartState(TypedDict):
     current_speaker: str
     chat_status: str
     error: str
+    discussed_topics: set  # 已讨论的话题类别
+    used_phrases: list     # 已使用过的话术，避免重复
 
 
 def validate_agents(state: ChatStartState) -> ChatStartState:
@@ -83,7 +85,9 @@ def init_session(state: ChatStartState) -> ChatStartState:
         "round_limit": req.get("round_limit", 30),
         "current_speaker": "agent_a",
         "messages": [],
-        "chat_status": "running"
+        "chat_status": "running",
+        "discussed_topics": set(),  # 初始化已讨论话题集合
+        "used_phrases": []          # 初始化已使用话术列表
     }
 
 
@@ -91,9 +95,12 @@ async def generate_opening(state: ChatStartState) -> ChatStartState:
     profile_a = state["agent_a_profile"]
     profile_b = state["agent_b_profile"]
 
-    user_prompt = f"""这是你们第一次见面。对方的基本信息：说话风格{profile_b['speak_style']}，性格{profile_b['character']}，恋爱模式{profile_b['love_style']}。
+    user_prompt = f"""你现在正在参加一个有趣的交友活动，刚刚认识了一个新朋友。
+    
+对方的信息：说话风格是{profile_b['speak_style']}，性格{profile_b['character']}，恋爱模式{profile_b['love_style']}。
 
-请用你的风格主动打招呼，介绍自己并表达友好。回复控制在2-4句话，像真人聊天一样自然。"""
+请用你的风格主动打招呼，就像平时跟朋友聊天一样自然。不用太正式，可以带点轻松活泼的语气，介绍一下自己，让对方觉得你很亲切。
+比如可以说说你喜欢做什么，或者问对方一个简单的问题。"""
 
     content = await _generate_message(
         system_prompt=profile_a["system_prompt"],
@@ -124,14 +131,21 @@ async def agent_speak(state: ChatStartState) -> ChatStartState:
     context = _build_context(recent_messages, speaker)
     topic = _pick_topic(round_num)
 
-    user_prompt = f"""当前是第{round_num}轮对话。{topic}
+    user_prompt = f"""你正在和一个新朋友聊天，氛围很轻松。{topic}
 
-对方的基本信息：说话风格{other_profile['speak_style']}，性格{other_profile['character']}，恋爱模式{other_profile['love_style']}。
+对方的性格：{other_profile['character']}，说话风格：{other_profile['speak_style']}，恋爱观：{other_profile['love_style']}。
 
-## 最近的对话记录
+刚才你们聊了这些：
 {context}
 
-请根据你的人格设定自然地回复对方。回复控制在2-4句话，像真人聊天一样自然。"""
+请继续自然地聊下去。想象一下这是真实的面对面聊天，不要太死板，可以适当用一些语气词让对话更生动。
+你可以：
+- 对对方说的话表示认同或好奇
+- 分享一点自己的经历或想法
+- 问对方一个相关的问题
+- 顺着话题自然延伸
+
+保持轻松友好的语气，回复2-4句话就好。"""
 
     content = await _generate_message(
         system_prompt=profile["system_prompt"],
@@ -176,28 +190,95 @@ def _build_context(messages: list[dict], current_speaker: str) -> str:
     return "\n".join(lines)
 
 
+import random
+
+# 话题池 - 按类别分组，增加多样性
+TOPIC_CATEGORIES = {
+    "兴趣爱好": [
+        "可以聊聊平时的兴趣爱好。",
+        "你平时喜欢做什么来放松自己？",
+        "最近有没有什么特别喜欢做的事情？",
+        "周末一般会怎么安排时间呢？",
+        "有没有什么一直想尝试但还没做的事情？",
+    ],
+    "工作生活": [
+        "可以聊聊工作和生活状态。",
+        "工作中有没有什么有趣的事情？",
+        "平时工作压力大吗？怎么缓解的？",
+        "对现在的工作满意吗？",
+        "你是怎么平衡工作和生活的？",
+    ],
+    "感情观念": [
+        "可以聊聊对感情的看法。",
+        "你觉得感情中最重要的是什么？",
+        "喜欢什么样的相处模式？",
+        "对恋爱有什么期待吗？",
+        "怎么看待一见钟情和日久生情？",
+    ],
+    "家庭观念": [
+        "可以聊聊家庭观念。",
+        "和家人的关系怎么样？",
+        "理想中的家庭是什么样的？",
+        "平时会和家人一起做什么？",
+        "觉得家庭对一个人影响大吗？",
+    ],
+    "未来规划": [
+        "可以聊聊未来的规划。",
+        "对未来有什么期待吗？",
+        "五年后想成为什么样的人？",
+        "有没有特别想实现的目标？",
+        "未来想在哪个城市生活？",
+    ],
+    "价值观": [
+        "可以聊聊消费观念。",
+        "对AA制怎么看？",
+        "觉得钱应该花在什么地方？",
+        "怎么看待物质和精神的关系？",
+        "消费时更看重品质还是价格？",
+    ],
+    "婚姻家庭": [
+        "可以聊聊对婚姻的看法。",
+        "理想中的另一半是什么样的？",
+        "对生育有什么看法？",
+        "怎么看待异地恋？",
+        "觉得婚姻最重要的是什么？",
+    ],
+    "生活习惯": [
+        "可以聊聊生活中的小习惯。",
+        "每天有什么必做的事情吗？",
+        "生活中有什么小仪式感吗？",
+        "作息规律吗？",
+        "喜欢收拾房间吗？",
+    ],
+}
+
+# 已讨论话题记忆
+discussed_topics = set()
+
 def _pick_topic(round_num: int) -> str:
-    topics = {
-        1: "请回复对方的开场白，自然地介绍自己。",
-        3: "可以聊聊平时的兴趣爱好。",
-        5: "可以聊聊工作和生活状态。",
-        7: "可以聊聊对感情的看法。",
-        9: "可以聊聊家庭观念。",
-        11: "可以聊聊未来的规划。",
-        13: "可以聊聊消费观念。",
-        15: "可以聊聊对婚姻的看法。",
-        17: "可以聊聊理想中的另一半。",
-        19: "可以聊聊过去的感情经历（适度）。",
-        21: "可以聊聊生活中的小习惯。",
-        23: "可以聊聊对异地恋的看法。",
-        25: "可以聊聊对AA制的看法。",
-        27: "可以聊聊对生育的看法。",
-        29: "对话即将结束，可以做一个总结或表达感受。",
-    }
-    for threshold in sorted(topics.keys(), reverse=True):
-        if round_num >= threshold:
-            return topics[threshold]
-    return "自然地延续对话。"
+    global discussed_topics
+    
+    # 第一轮固定介绍
+    if round_num == 1:
+        return "请回复对方的开场白，自然地介绍自己。"
+    
+    # 最后一轮固定总结
+    if round_num >= 29:
+        return "对话即将结束，可以做一个总结或表达感受。"
+    
+    # 其他轮次：优先选择未讨论过的话题类别，然后随机选择具体话题
+    available_categories = [cat for cat in TOPIC_CATEGORIES.keys() if cat not in discussed_topics]
+    
+    if available_categories:
+        # 选择一个新类别
+        selected_category = random.choice(available_categories)
+        discussed_topics.add(selected_category)
+    else:
+        # 所有类别都讨论过了，随机选择
+        selected_category = random.choice(list(TOPIC_CATEGORIES.keys()))
+    
+    # 从选中类别中随机选择一个话题
+    return random.choice(TOPIC_CATEGORIES[selected_category])
 
 
 async def _generate_message(system_prompt: str, user_prompt: str, profile: dict) -> str:
@@ -308,18 +389,28 @@ async def _run_chat_loop(session_id: str, profile_a: dict, profile_b: dict, roun
                                context: str, speaker: str):
         topic = _pick_topic(round_num)
         if round_num == 0:
-            user_prompt = f"""这是你们第一次见面。对方的基本信息：说话风格{other_profile['speak_style']}，性格{other_profile['character']}，恋爱模式{other_profile['love_style']}。
+            user_prompt = f"""你现在正在参加一个有趣的交友活动，刚刚认识了一个新朋友。
+            
+对方的信息：说话风格是{other_profile['speak_style']}，性格{other_profile['character']}，恋爱模式{other_profile['love_style']}。
 
-请用你的风格主动打招呼，介绍自己并表达友好。回复控制在2-4句话，像真人聊天一样自然。"""
+请用你的风格主动打招呼，就像平时跟朋友聊天一样自然。不用太正式，可以带点轻松活泼的语气，介绍一下自己，让对方觉得你很亲切。
+比如可以说说你喜欢做什么，或者问对方一个简单的问题。"""
         else:
-            user_prompt = f"""当前是第{round_num}轮对话。{topic}
+            user_prompt = f"""你正在和一个新朋友聊天，氛围很轻松。{topic}
 
-对方的基本信息：说话风格{other_profile['speak_style']}，性格{other_profile['character']}，恋爱模式{other_profile['love_style']}。
+对方的性格：{other_profile['character']}，说话风格：{other_profile['speak_style']}，恋爱观：{other_profile['love_style']}。
 
-## 最近的对话记录
+刚才你们聊了这些：
 {context}
 
-请根据你的人格设定自然地回复对方。回复控制在2-4句话，像真人聊天一样自然。"""
+请继续自然地聊下去。想象一下这是真实的面对面聊天，不要太死板，可以适当用一些语气词让对话更生动。
+你可以：
+- 对对方说的话表示认同或好奇
+- 分享一点自己的经历或想法
+- 问对方一个相关的问题
+- 顺着话题自然延伸
+
+保持轻松友好的语气，回复2-4句话就好。"""
 
         tokens = []
         async for token in LLMClient.stream_chat(profile["system_prompt"], user_prompt, profile):

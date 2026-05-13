@@ -14,7 +14,7 @@
     <select id="findPage" resultType="com.matching.platform.entity.HumanChatMessage">
         SELECT * FROM human_chat_message
         WHERE match_id = #{matchId}
-        ORDER BY created_at ASC, id ASC
+        ORDER BY created_at DESC, id DESC
         LIMIT #{offset}, #{pageSize}
     </select>
 
