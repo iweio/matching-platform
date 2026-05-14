@@ -191,8 +191,10 @@ public class MatchApplicationService {
         r.setUnlockFlag(m.getUnlockFlag());
         if (userId.equals(m.getUserA())) {
             r.setPartnerId(m.getUserB());
+            r.setMyOp(m.getAOp());
         } else {
             r.setPartnerId(m.getUserA());
+            r.setMyOp(m.getBOp());
         }
         return r;
     }

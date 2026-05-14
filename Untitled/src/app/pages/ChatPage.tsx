@@ -96,7 +96,7 @@ export function ChatPage() {
       message_id: tempId,
       sender_id: uid,
       content,
-      created_at: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      created_at: new Date().toISOString().replace("T", " ").slice(0, 19),
     }]);
     try {
       const res = await api.sendMessage(selectedMatchId, uid, content);

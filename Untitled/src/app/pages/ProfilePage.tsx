@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { User, Heart, CheckCircle, TrendingUp, Settings, RefreshCw, LogOut, MessageCircle, ChevronRight, XCircle } from "lucide-react";
+import { User, Heart, CheckCircle, TrendingUp, Settings, RefreshCw, LogOut, ChevronRight, X, AlertCircle, Lightbulb, ThumbsUp, Loader2 } from "lucide-react";
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
 import { api } from "../api";
 import { getUserId, clearSession } from "../storage";
 
@@ -25,6 +26,11 @@ export function ProfilePage() {
   const [loadError, setLoadError] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
+
+  // Report modal state
+  const [reportModal, setReportModal] = useState<{ open: boolean; matchId: string; partnerNick: string } | null>(null);
+  const [reportData, setReportData] = useState<any>(null);
+  const [reportLoading, setReportLoading] = useState(false);
 
   useEffect(() => {
     if (!uid) { navigate("/login", { replace: true }); return; }
@@ -58,6 +64,25 @@ export function ProfilePage() {
     navigate("/login", { replace: true });
   };
 
+  const handleViewReport = async (item: HistoryItem) => {
+    setReportModal({ open: true, matchId: item.match_id, partnerNick: item.partner_nick || `用户 ${item.partner_id?.slice(-6) || ""}` });
+    setReportData(null);
+    setReportLoading(true);
+    try {
+      const r = await api.getReport(item.match_id, uid);
+      setReportData(r);
+    } catch {
+      setReportData(null);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const closeReport = () => {
+    setReportModal(null);
+    setReportData(null);
+  };
+
   const matchCount = history.length;
   const unlockCount = history.filter(h => h.unlock_flag === 1).length;
   const successRate = matchCount > 0 ? Math.round((unlockCount / matchCount) * 100) : 0;
@@ -68,6 +93,13 @@ export function ProfilePage() {
     2: "bg-purple-100 text-purple-700", 3: "bg-purple-100 text-purple-700",
     4: "bg-red-100 text-red-700", 5: "bg-green-100 text-green-700",
   };
+
+  const score = reportData?.score || 0;
+  const levelLabels = ["较差", "一般", "良好", "优秀"];
+  const levelIdx = score >= 85 ? 3 : score >= 70 ? 2 : score >= 50 ? 1 : 0;
+  const levelColors = ["text-gray-500","text-blue-600","text-purple-600","text-green-600"];
+  const levelBg = ["bg-gray-100","bg-blue-100","bg-purple-100","bg-green-100"];
+  const radarData = reportData?.dimensions || [];
 
   if (loadError) return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 flex items-center justify-center p-4">
@@ -159,13 +191,11 @@ export function ProfilePage() {
                 <div key={item.match_id}
                   className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
                   onClick={() => {
-                    sessionStorage.setItem("match_id", item.match_id);
-                    if (item.status === 2 || item.status === 3 || item.status === 5) {
-                      navigate("/report");
-                    } else if (item.unlock_flag === 1) {
+                    if (item.status === 1) {
+                      sessionStorage.setItem("match_id", item.match_id);
                       navigate(`/chat?match_id=${item.match_id}`);
                     } else {
-                      navigate("/match");
+                      handleViewReport(item);
                     }
                   }}
                 >
@@ -198,6 +228,118 @@ export function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Report Modal */}
+      {reportModal?.open && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 overflow-y-auto" onClick={closeReport}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 sticky top-0 bg-white rounded-t-2xl z-10">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">适配报告</h3>
+                <p className="text-xs text-gray-500">{reportModal.partnerNick} · {reportModal.matchId}</p>
+              </div>
+              <button onClick={closeReport} className="text-gray-400 hover:text-gray-600 p-1">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-6">
+              {reportLoading ? (
+                <div className="flex justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                </div>
+              ) : !reportData ? (
+                <div className="text-center py-12 text-gray-500">
+                  <AlertCircle className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p>无法加载报告</p>
+                </div>
+              ) : (
+                <>
+                  {/* Score */}
+                  <div className="text-center mb-8">
+                    <div className={`inline-flex items-center justify-center w-24 h-24 rounded-full ${levelBg[levelIdx]} mb-3`}>
+                      <div className={`text-5xl font-bold ${levelColors[levelIdx]}`}>{score}</div>
+                    </div>
+                    <div className={`text-xl font-semibold mb-1 ${levelColors[levelIdx]}`}>匹配等级：{levelLabels[levelIdx]}</div>
+                    <p className="text-sm text-gray-500">{score >= 85 ? "你们的适配度很高！" : score >= 70 ? "还不错，可以试试。" : "匹配度一般，请谨慎考虑。"}</p>
+                  </div>
+
+                  {/* Radar Chart */}
+                  {radarData.length > 0 && (
+                    <div className="mb-8">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">五维适配分析</h3>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart data={radarData}>
+                            <PolarGrid stroke="#e5e7eb" />
+                            <PolarAngleAxis dataKey="name" tick={{ fill: "#6b7280", fontSize: 13 }} />
+                            <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
+                            <Radar name="适配度" dataKey="score" stroke="#a855f7" fill="#a855f7" fillOpacity={0.6} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="grid grid-cols-5 gap-3 mt-4">
+                        {radarData.map((item: any) => (
+                          <div key={item.name} className="text-center">
+                            <div className="text-xl font-bold text-purple-600">{item.score}</div>
+                            <div className="text-xs text-gray-500">{item.name}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Analysis sections */}
+                  <div className="space-y-4">
+                    {reportData?.advantage && (
+                      <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <ThumbsUp className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-green-900 mb-1">优势分析</h4>
+                            <p className="text-green-800 text-sm leading-relaxed">{reportData.advantage}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {reportData?.risk && (
+                      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-amber-900 mb-1">风险提示</h4>
+                            <p className="text-amber-800 text-sm leading-relaxed">{reportData.risk}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {reportData?.suggest && (
+                      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <Lightbulb className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <h4 className="font-semibold text-blue-900 mb-1">婚恋建议</h4>
+                            <p className="text-blue-800 text-sm leading-relaxed">{reportData.suggest}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button onClick={closeReport} className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Heart, AlertCircle, Lightbulb, ThumbsUp, X, Loader2 } from "lucide-react";
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from "recharts";
@@ -12,6 +12,61 @@ export function ReportPage() {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showActions, setShowActions] = useState(false);
+  const [toast, setToast] = useState<{ msg: string; type: "rejected" | "unlocked" } | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resolvedRef = useRef(false);
+
+  const clearAndRedirect = useCallback((path: string) => {
+    sessionStorage.removeItem("match_id");
+    navigate(path, { replace: true });
+  }, [navigate]);
+
+  // Real-time polling: detect partner's action
+  useEffect(() => {
+    if (!matchId || !uid) return;
+
+    const poll = async () => {
+      if (resolvedRef.current) return;
+      try {
+        const progress: any = await api.getProgress(matchId, uid);
+        const status = progress?.status;
+        const myOp = progress?.my_op;
+
+        // Partner rejected → notify and redirect
+        if (status === 4) {
+          resolvedRef.current = true;
+          setShowActions(false);
+          setToast({ msg: "对方已拒绝匹配", type: "rejected" });
+          setTimeout(() => clearAndRedirect("/match"), 2000);
+          return;
+        }
+
+        // Both agreed → redirect to unlock
+        if (status === 5) {
+          resolvedRef.current = true;
+          setShowActions(false);
+          setToast({ msg: "双方已解锁，正在跳转…", type: "unlocked" });
+          setTimeout(() => clearAndRedirect("/unlock"), 1500);
+          return;
+        }
+
+        // Update button visibility based on current state
+        if (status === 2 || status === 3) {
+          setShowActions(!myOp || myOp === "");
+        } else {
+          setShowActions(false);
+        }
+      } catch {}
+    };
+
+    poll(); // immediate first poll
+    pollingRef.current = setInterval(poll, 2000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [matchId, uid, clearAndRedirect]);
 
   useEffect(() => {
     if (!uid || !matchId) { navigate("/match", { replace: true }); return; }
@@ -30,8 +85,15 @@ export function ReportPage() {
 
   const handleAgree = async () => {
     try {
-      await api.unlock(matchId, uid, "agree");
-      navigate("/unlock");
+      const res: any = await api.unlock(matchId, uid, "agree");
+      // bothAgreed=true means both agreed, redirect to unlock
+      if (res?.bothAgreed) {
+        sessionStorage.removeItem("match_id");
+        navigate("/unlock", { replace: true });
+      } else {
+        // Waiting for partner — hide buttons, keep polling
+        setShowActions(false);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "操作失败";
       alert("操作失败: " + msg);
@@ -41,7 +103,8 @@ export function ReportPage() {
   const handleReject = async () => {
     try {
       await api.unlock(matchId, uid, "reject");
-      navigate("/match");
+      sessionStorage.removeItem("match_id");
+      navigate("/match", { replace: true });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "操作失败";
       alert("操作失败: " + msg);
@@ -143,16 +206,52 @@ export function ReportPage() {
             )}
           </div>
 
-          <div className="flex gap-4">
-            <button onClick={handleReject} className="flex-1 flex items-center justify-center gap-2 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
-              <X className="w-5 h-5" />拒绝匹配
-            </button>
-            <button onClick={handleAgree} className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-4 rounded-lg font-semibold hover:shadow-lg transition-all">
-              <Heart className="w-5 h-5" />同意解锁
-            </button>
-          </div>
+          {showActions && (
+            <div className="flex gap-4">
+              <button onClick={handleReject} className="flex-1 flex items-center justify-center gap-2 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+                <X className="w-5 h-5" />拒绝匹配
+              </button>
+              <button onClick={handleAgree} className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-4 rounded-lg font-semibold hover:shadow-lg transition-all">
+                <Heart className="w-5 h-5" />同意解锁
+              </button>
+            </div>
+          )}
+          {!showActions && (
+            <div className="text-center">
+              <button onClick={() => navigate("/match")} className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all">
+                返回匹配
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Toast overlay for real-time partner action */}
+      {toast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => {}}>
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm mx-4 text-center animate-in fade-in zoom-in">
+            {toast.type === "rejected" ? (
+              <>
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">匹配已结束</h3>
+                <p className="text-gray-500 mb-1">{toast.msg}</p>
+                <p className="text-sm text-gray-400">即将自动返回匹配页…</p>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Heart className="w-8 h-8 text-green-500" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">解锁成功</h3>
+                <p className="text-gray-500 mb-1">{toast.msg}</p>
+                <p className="text-sm text-gray-400">即将自动跳转…</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

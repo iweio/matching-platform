@@ -18,6 +18,7 @@ export function MatchingPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentRound, setCurrentRound] = useState(0);
   const [done, setDone] = useState(false);
+  const [rejected, setRejected] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,8 +43,14 @@ export function MatchingPage() {
       } catch {}
     });
 
-    es.addEventListener("done", () => {
+    es.addEventListener("done", (e) => {
       es.close();
+      try {
+        const data = JSON.parse((e as MessageEvent).data);
+        if (data === "rejected") {
+          setRejected(true);
+        }
+      } catch {}
       setDone(true);
     });
 
@@ -90,9 +97,9 @@ export function MatchingPage() {
             }))
           );
           setCurrentRound(r.records.length);
-          // Check if match is done
           const prog = await api.getProgress(matchId, uid);
           if ((prog as any).status >= 2) {
+            if ((prog as any).status === 4) setRejected(true);
             setDone(true);
             stop = true;
             return;
@@ -162,7 +169,19 @@ export function MatchingPage() {
         </div>
       </div>
 
-      {done && (
+      {done && rejected && (
+        <div className="bg-white border-t border-gray-200 px-6 py-4 flex flex-col items-center gap-3">
+          <p className="text-red-600 font-medium">对方已拒绝该匹配</p>
+          <p className="text-sm text-gray-500">很遗憾，双方未能达成共识。您可以返回重新发起匹配。</p>
+          <button
+            onClick={() => navigate("/match", { replace: true })}
+            className="inline-flex items-center gap-2 bg-gray-500 text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-gray-600 transition-all"
+          >
+            返回匹配
+          </button>
+        </div>
+      )}
+      {done && !rejected && (
         <div className="bg-white border-t border-gray-200 px-6 py-4 flex items-center justify-center gap-4">
           <p className="text-green-600 font-medium">智能体对话已完成</p>
           <button

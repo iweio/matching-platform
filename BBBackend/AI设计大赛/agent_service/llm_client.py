@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 from typing import Optional, AsyncGenerator
 from langchain_openai import ChatOpenAI
 
@@ -123,8 +124,8 @@ class LLMClient:
         love_style = profile.get("love_style", "真诚") if profile else "真诚"
         agent_id = profile.get("agent_id", "unknown") if profile else "unknown"
 
-        # Seed with agent_id + round context for variety per agent, deterministic per round
-        seed_str = agent_id + user_prompt[:200]
+        # Seed with agent_id + context + time-based jitter for variety
+        seed_str = agent_id + user_prompt[:200] + str(time.time())[:8]
         seed = int(hashlib.md5(seed_str.encode()).hexdigest()[:8], 16)
         rng = random.Random(seed)
 
@@ -155,7 +156,7 @@ class LLMClient:
                 "幽默": [
                     "嘿！可算等到你了～我先自我介绍一下：资深吃货、业余摄影师、专业沙发土豆。你呢，有什么隐藏技能吗？",
                     "你好你好！先声明一下：我这个人比较逗，可能聊着聊着就开始讲冷笑话了，别嫌弃哈～你平时喜欢干嘛？",
-                    "嗨～终于不用跟AI自言自语了（等等，好像我们就是AI？哈哈开玩笑的）。很高兴认识你！",
+                    "嗨～终于不用跟AI自言自语了（等等，好像我们就是AI？开个玩笑～）。很高兴认识你！",
                     "哈喽！我是那种自带笑点的人，希望聊天的时候能让你开心～你平时喜欢搞笑的东西吗？",
                     "嘿呀，终于匹配成功！我先来个灵魂拷问：你喜欢吃香菜吗？😜",
                 ],
@@ -203,7 +204,7 @@ class LLMClient:
         def _gen_hobby_response():
             if "活泼" in character or "外向" in speak_style:
                 return rng.choice([
-                    "哈哈说到爱好我可就停不下来了！我喜欢户外运动，跑步、爬山、骑行都爱，周末根本闲不住。你呢，周末一般怎么过呀？",
+                    "说到爱好我可就停不下来了！我喜欢户外运动，跑步、爬山、骑行都爱，周末根本闲不住。你呢，周末一般怎么过呀？",
                     "我特别喜欢旅行！去过不少地方，每次都有不一样的体验。你喜不喜欢旅行呀？有没有特别想去的地方呢？",
                     "我最近迷上了露营！感觉亲近大自然特别放松～你平时喜欢户外活动吗？",
                     "我爱好可多啦！摄影、美食、追剧……周末总能找到好玩的事情做。你呢？",
@@ -295,7 +296,7 @@ class LLMClient:
         def _gen_habit_response():
             return rng.choice([
                 "我生活上还算规律，不太熬夜，喜欢把家里收拾得干净整洁。小习惯嘛……睡前一定要看会儿书或者听听播客。你呢？",
-                "我有点小洁癖哈哈，看到乱的东西就想收拾。不过也不算太过分，就是比较在意生活品质。你有什么特别的生活习惯吗？",
+                "我有点小洁癖，看到乱的东西就想收拾。不过也不算太过分，就是比较在意生活品质。你有什么特别的生活习惯吗？",
                 "我每天早上都会喝一杯咖啡，这是开启一天的仪式感～你有什么每天必做的小习惯吗？",
                 "我喜欢睡前泡脚，感觉特别放松。生活中的小习惯能带来很多幸福感呢，你有什么习惯吗？",
             ])
@@ -314,7 +315,7 @@ class LLMClient:
                 if "?" in other_said or "？" in other_said:
                     return rng.choice([
                         f"嗯，你问得很好呢。我觉得这个要看具体情况，每个人的选择都不一样。你觉得呢？",
-                        f"哈哈这个问题有意思！我觉得最重要的还是两个人合得来，其他的可以慢慢商量。",
+                        f"这个问题挺有意思的！我觉得最重要的还是两个人合得来，其他的可以慢慢商量。",
                         f"这个问题我也在思考呢～你的想法是怎样的呀？",
                         f"嗯……这个问题挺值得探讨的。我觉得关键在于两个人的共识，你说呢？",
                     ])

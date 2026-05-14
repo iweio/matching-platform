@@ -15,4 +15,6 @@ public class MatchProgressResponse {
     private String bOp;
     @JsonProperty("unlock_flag")
     private Integer unlockFlag;
+    @JsonProperty("my_op")
+    private String myOp;
 }

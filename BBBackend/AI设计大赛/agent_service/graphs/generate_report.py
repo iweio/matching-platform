@@ -117,19 +117,41 @@ async def analyze_conversation(state: GenerateReportState) -> GenerateReportStat
 ## 对话记录
 {conversation_text}"""
 
+    # Always compute real scores from profile data first
+    fallback = _fallback_analysis(messages, profile_a, profile_b)
+    state["dimensions"] = fallback["dimensions"]
+    state["score"] = fallback["score"]
+
+    # Use LLM to polish text if available, otherwise use computed text
     if LLMClient.is_available():
         try:
-            result = await LLMClient.chat_json(system_prompt, user_prompt)
-            state["dimensions"] = result.get("dimensions", {"emotion": 50, "value": 50, "communication": 50, "lifestyle": 50, "future": 50})
-            state["score"] = result.get("score", 50)
-            state["advantage"] = result.get("advantage", "双方基本匹配")
-            state["risk"] = result.get("risk", "暂未发现明显风险")
-            state["suggest"] = result.get("suggest", "建议进一步了解")
+            polish_prompt = f"""请根据以下匹配分析数据，润色生成更自然的优势分析、风险提示和婚恋建议文本。
+
+## 计算得出的数据
+总分：{fallback["score"]}
+各维度：{json.dumps(fallback["dimensions"], ensure_ascii=False)}
+优势要点：{fallback["advantage"]}
+风险要点：{fallback["risk"]}
+建议要点：{fallback["suggest"]}
+
+## 双方画像
+A方：{json.dumps(profile_a, ensure_ascii=False)}
+B方：{json.dumps(profile_b, ensure_ascii=False)}
+
+请严格按照JSON格式输出，不要包含其他内容：
+{{"advantage": "优势分析，不超过100字", "risk": "风险提示，不超过100字", "suggest": "婚恋建议，不超过100字"}}"""
+
+            result = await LLMClient.chat_json(system_prompt, polish_prompt)
+            state["advantage"] = result.get("advantage", fallback["advantage"])
+            state["risk"] = result.get("risk", fallback["risk"])
+            state["suggest"] = result.get("suggest", fallback["suggest"])
             return state
         except Exception:
             pass
 
-    state.update(_fallback_analysis(messages, profile_a, profile_b))
+    state["advantage"] = fallback["advantage"]
+    state["risk"] = fallback["risk"]
+    state["suggest"] = fallback["suggest"]
     return state
 
 
