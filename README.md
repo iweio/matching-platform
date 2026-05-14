@@ -25,7 +25,7 @@ docker compose up -d
 
 ```
 Total/
-├── BBBackend/                  # Spring Boot 后端
+├── Backend/                    # Spring Boot 后端
 │   ├── src/main/java/...       # 源码
 │   ├── src/main/resources/
 │   │   ├── db/schema.sql       # Docker 初始化建表
