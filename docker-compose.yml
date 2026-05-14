@@ -68,7 +68,7 @@ services:
 
   agent-service:
     build:
-      context: ./BBBackend/AI设计大赛/agent_service
+      context: ./BBBackend/ai-competition/agent_service
       dockerfile: Dockerfile
     container_name: matching-agent
     ports:

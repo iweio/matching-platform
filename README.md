@@ -30,7 +30,7 @@ Total/
 │   ├── src/main/resources/
 │   │   ├── db/schema.sql       # Docker 初始化建表
 │   │   └── schema.sql          # Spring Boot 初始化建表
-│   ├── AI设计大赛/agent_service/  # Python FastAPI 智能体
+│   ├── ai-competition/agent_service/  # Python FastAPI 智能体
 │   └── API文档/                 # API 接口文档 (.docx + 生成脚本)
 ├── Untitled/                   # React 前端 (Vite + TypeScript)
 ├── docker-compose.yml          # 一键部署编排
