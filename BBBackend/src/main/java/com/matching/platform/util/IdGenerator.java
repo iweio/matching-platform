@@ -3,7 +3,7 @@ package com.matching.platform.util;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
+
 
 public final class IdGenerator {
     private static final SecureRandom RANDOM = new SecureRandom();
@@ -22,9 +22,6 @@ public final class IdGenerator {
         return "match_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + "_" + randomHex(6);
     }
 
-    public static String newSessionId() {
-        return "session_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-    }
 
     private static String randomHex(int bytes) {
         byte[] buf = new byte[bytes];

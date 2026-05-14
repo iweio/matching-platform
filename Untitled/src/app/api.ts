@@ -33,12 +33,6 @@ export const api = {
   login: (body: { phone: string; password: string }) =>
     post<AuthData>("/auth/login", body),
 
-  getMe: () =>
-    get<AuthData>("/auth/me"),
-
-  createUser: (body: { phone: string; nick: string; gender: number; age: number }) =>
-    post<{ user_id: string; agent_id: string }>("/agent/init", body),
-
   getUser: (userId: string) =>
     get<{
       user_id: string; phone: string; nick: string; gender: number;
@@ -52,12 +46,6 @@ export const api = {
     speak_style: string; character: string;
     love_style: string; values_view: object; taboo: object;
   }) => post<{ distill_status: number }>("/user/distill", body),
-
-  modelRefresh: (body: {
-    user_id: string; agent_id: string; speak_style: string;
-    character: string; love_style: string; values_view: object; taboo: object;
-  }) =>
-    post<{ model_version: string; status: string }>("/agent/algo/model-refresh", body),
 
   startMatch: (userId: string) =>
     post<{ match_id: string; partner_id: string }>("/match/start", { user_id: userId }),
@@ -99,7 +87,7 @@ export const api = {
   getConversations: () =>
     get<{
       matchId: string; partnerUserId: string; partnerNick: string;
-      partnerGender: number; lastMessage: string; lastTime: string; unlockFlag: number;
+      lastMessage: string; lastTime: string; unlockFlag: number;
     }[]>("/user/conversations"),
 
   getHistory: (userId: string) =>

@@ -1,6 +1,29 @@
 @import 'tailwindcss' source(none);
 @source '../**/*.{js,ts,jsx,tsx}';
 
+@theme {
+  --animate-float-left: float-left 3s ease-in-out infinite;
+  --animate-float-right: float-right 3s ease-in-out infinite 0.5s;
+  --animate-progress-indeterminate: progress-indeterminate 2s ease-in-out infinite;
+  --animate-message-in: message-in 0.35s ease-out both;
+}
+
+@keyframes float-left {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes float-right {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+@keyframes message-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);

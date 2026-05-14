@@ -1,5 +1,4 @@
 const UID_PATTERN = /^user_\d{13}_[0-9a-f]{8}$/;
-const AGENT_PATTERN = /^agent_\d{13}_[0-9a-f]{8}$/;
 
 export function getUserId(): string {
   const v = sessionStorage.getItem("user_id");
@@ -7,11 +6,6 @@ export function getUserId(): string {
   return "";
 }
 
-export function getAgentId(): string {
-  const v = sessionStorage.getItem("agent_id");
-  if (v && AGENT_PATTERN.test(v)) return v;
-  return "";
-}
 
 export function getToken(): string {
   const v = sessionStorage.getItem("auth_token");

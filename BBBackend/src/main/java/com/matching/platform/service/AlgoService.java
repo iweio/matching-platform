@@ -19,12 +19,12 @@ import com.matching.platform.dto.match.ReportDimensions;
 import com.matching.platform.entity.MatchRecord;
 import com.matching.platform.entity.MatchReport;
 import com.matching.platform.entity.UserAgent;
-import com.matching.platform.mapper.MatchAgentMessageMapper;
+
 import com.matching.platform.mapper.MatchRecordMapper;
 import com.matching.platform.mapper.MatchReportMapper;
 import com.matching.platform.mapper.UserAgentMapper;
 import com.matching.platform.mapper.UserDistillMapper;
-import com.matching.platform.util.IdGenerator;
+
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -50,7 +50,7 @@ public class AlgoService {
     private final UserDistillMapper userDistillMapper;
     private final MatchRecordMapper matchRecordMapper;
     private final MatchReportMapper matchReportMapper;
-    private final MatchAgentMessageMapper matchAgentMessageMapper;
+
     private final ObjectMapper objectMapper;
     private final RestTemplate restTemplate;
     private final MatchingProperties matchingProperties;
